@@ -1,0 +1,160 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isMasterAdmin() {
+      return isSignedIn() && (
+        request.auth.uid == 'aWplD23baqfpkcMPc2fqy967lt02' ||
+        (request.auth.token.email != null && (
+          request.auth.token.email.lower() == 'edu.kundanai@gmail.com' ||
+          request.auth.token.email.lower() == 'admin@camporacafe.gecbanka.ac.in' ||
+          request.auth.token.email.lower() == 'owner@camporacafe.gecbanka.ac.in'
+        ))
+      );
+    }
+
+    function isAdminOrOwner() {
+      return isMasterAdmin() || (
+        isSignedIn() &&
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.isActive == true &&
+        (get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.role in ['admin', 'owner', 'staff'])
+      );
+    }
+
+    // Admins Collection: Separate Owner/Admin Account Authority
+    // Customers CANNOT create, update, or delete admin documents.
+    match /admins/{adminId} {
+      allow read: if isSignedIn();
+      allow write: if isMasterAdmin() || isAdminOrOwner();
+    }
+
+    // Users Collection (Customer accounts and profiles):
+    match /users/{userId} {
+      // User can read their own profile; admins can read all for management
+      allow read: if isOwner(userId) || isAdminOrOwner();
+
+      // Customer can register their own profile ONLY with role == 'customer'.
+      // Admin accounts can only be provisioned by admins/owners.
+      allow create: if isOwner(userId) && (
+        request.resource.data.role == 'customer' || isAdminOrOwner()
+      );
+
+      // Updating profile: Customer cannot change their role to admin/owner.
+      allow update: if (
+        isOwner(userId) &&
+        request.resource.data.role == resource.data.role &&
+        request.resource.data.role == 'customer'
+      ) || isAdminOrOwner();
+
+      allow delete: if isAdminOrOwner();
+    }
+
+    // Cafe Menu Items: Public read, Admin/Owner write
+    match /menuItems/{itemId} {
+      allow read: if true;
+      allow write: if isAdminOrOwner();
+    }
+
+    // Cafe Tables: Public read, Admin/Owner write (and reservation status update during checkout)
+    match /tables/{tableId} {
+      allow read: if true;
+      allow write: if isAdminOrOwner() || (
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'currentBookingId'])
+      );
+    }
+
+    // Cafe Settings (including Café Open/Closed status): Public read, Admin/Owner write
+    match /settings/{settingId} {
+      allow read: if true;
+      allow write: if isAdminOrOwner();
+    }
+
+    // Promo Codes: Public read, Admin/Owner write
+    match /promoCodes/{promoId} {
+      allow read: if true;
+      allow write: if isAdminOrOwner();
+    }
+
+    // Orders Collection
+    match /orders/{orderId} {
+      // 1. GET: Admin/Owner can get any order; Customer can get their own order
+      allow get: if isAdminOrOwner() || 
+                    (isSignedIn() && (resource.data.userId == request.auth.uid || resource.data.customerId == request.auth.uid)) ||
+                    (!isSignedIn());
+
+      // LIST: Admin/Owner can list all orders. Customer can list ONLY their own orders
+      allow list: if isAdminOrOwner() || 
+                     (isSignedIn() && (resource.data.userId == request.auth.uid || resource.data.customerId == request.auth.uid));
+
+      // 2. CREATE:
+      // Signed in user can only create an order with their own userId/customerId
+      allow create: if isAdminOrOwner() || (
+        isSignedIn() && (request.resource.data.userId == request.auth.uid || request.resource.data.customerId == request.auth.uid)
+      ) || (
+        !isSignedIn() && request.resource.data.userId is string
+      );
+
+      // 3. UPDATE:
+      // Admin/Owner has full order management permissions (preparing, ready, completed, notes, etc.)
+      // Customer can ONLY cancel active order or submit feedback
+      allow update: if isAdminOrOwner() || (
+        isSignedIn() && 
+        (resource.data.userId == request.auth.uid || resource.data.customerId == request.auth.uid) &&
+        request.resource.data.userId == resource.data.userId &&
+        request.resource.data.pricing == resource.data.pricing &&
+        request.resource.data.items == resource.data.items &&
+        (
+          (request.resource.data.status == 'cancelled' && 
+           resource.data.status in ['confirmed', 'preparing'] &&
+           request.resource.data.cancelledBy == 'customer' &&
+           request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'cancellationReason', 'cancelledBy', 'cancelledAt', 'updatedAt', 'adminNotes'])) ||
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['feedback', 'updatedAt'])
+        )
+      );
+
+      // 4. DELETE: Only Admin/Owner can delete order records
+      allow delete: if isAdminOrOwner();
+    }
+
+    // Customers directory: ONLY accessible by Admin/Owner
+    match /customers/{customerId} {
+      allow read, write: if isAdminOrOwner();
+    }
+
+    // Counter Sales Collection: Walk-in counter purchases recorded by Cafe Staff / Admin
+    // Stored separately from customer online orders. Accessible ONLY by Admin/Owner.
+    match /counterSales/{saleId} {
+      allow read, write: if isAdminOrOwner();
+    }
+
+    // Campus Staff Directory: Staff records and RBAC permissions
+    // Strictly restricted to authorized Owner/Admin.
+    match /staff/{staffId} {
+      allow read, write: if isAdminOrOwner();
+    }
+
+    // Staff Operational Audit Logs: Tamper-proof activity tracking
+    match /staffAuditLogs/{logId} {
+      allow read: if isAdminOrOwner();
+      allow create: if isAdminOrOwner();
+      allow update, delete: if isMasterAdmin();
+    }
+
+    // Staff Attendance & Work Records
+    // Strictly restricted from customers. Only Admin/Owner can mark or update attendance.
+    match /staffAttendance/{attendanceId} {
+      allow read: if isAdminOrOwner() || (isSignedIn() && exists(/databases/$(database)/documents/admins/$(request.auth.uid)));
+      allow create, update: if isAdminOrOwner();
+      allow delete: if isMasterAdmin();
+    }
+  }
+}

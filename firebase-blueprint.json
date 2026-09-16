@@ -1,0 +1,273 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Campora Cafe Firestore Blueprint",
+  "description": "Schema blueprint for Campora Cafe @ Government Engineering College (GEC) Banka database",
+  "entities": {
+    "orders": {
+      "collection": "orders",
+      "description": "Cafe table bookings, takeout, and campus delivery orders with live status tracking",
+      "fields": {
+        "id": { "type": "string", "description": "Order identification number (e.g. BK-9421)" },
+        "userId": { "type": "string", "description": "UID of the registered customer account or guest identifier" },
+        "customerId": { "type": "string", "description": "Customer UID or reference" },
+        "createdAt": { "type": "string", "description": "ISO timestamp of order creation" },
+        "updatedAt": { "type": "string", "description": "ISO timestamp of last update" },
+        "completedAt": { "type": "string", "description": "ISO timestamp when order was fulfilled" },
+        "cancelledAt": { "type": "string", "description": "ISO timestamp when order was cancelled" },
+        "cancellationReason": { "type": "string", "description": "Reason for cancellation" },
+        "cancelledBy": { "type": "string", "enum": ["customer", "admin"], "description": "Party who initiated cancellation" },
+        "bookingMode": { "type": "string", "enum": ["dine-in", "takeout", "delivery"], "description": "Type of booking" },
+        "status": { "type": "string", "enum": ["confirmed", "preparing", "ready", "completed", "cancelled"], "description": "Live preparation status" },
+        "customer": {
+          "type": "object",
+          "properties": {
+            "name": { "type": "string" },
+            "phone": { "type": "string" },
+            "email": { "type": "string" },
+            "specialRequests": { "type": "string" },
+            "sendWhatsAppNotification": { "type": "boolean" }
+          },
+          "required": ["name", "phone"]
+        },
+        "dineInDetails": {
+          "type": "object",
+          "properties": {
+            "date": { "type": "string" },
+            "timeSlot": { "type": "string" },
+            "guestCount": { "type": "number" },
+            "tableId": { "type": "string" },
+            "tableNumber": { "type": "string" },
+            "zone": { "type": "string" },
+            "occasion": { "type": "string" }
+          }
+        },
+        "takeoutDetails": {
+          "type": "object",
+          "properties": {
+            "pickupTime": { "type": "string" },
+            "vehicleOrNote": { "type": "string" }
+          }
+        },
+        "deliveryDetails": {
+          "type": "object",
+          "properties": {
+            "deliveryAddress": { "type": "string" },
+            "landmark": { "type": "string" },
+            "postalCode": { "type": "string" },
+            "deliveryInstructions": { "type": "string" }
+          }
+        },
+        "items": {
+          "type": "array",
+          "items": { "type": "object" }
+        },
+        "pricing": {
+          "type": "object",
+          "properties": {
+            "subtotal": { "type": "number" },
+            "discountAmount": { "type": "number" },
+            "discountCode": { "type": "string" },
+            "gstTax": { "type": "number" },
+            "serviceFee": { "type": "number" },
+            "deliveryFee": { "type": "number" },
+            "tip": { "type": "number" },
+            "total": { "type": "number" }
+          },
+          "required": ["subtotal", "total"]
+        },
+        "paymentMethod": { "type": "string", "enum": ["upi", "cash", "counter", "card", "apple_pay", "google_pay"] },
+        "paymentStatus": { "type": "string", "enum": ["paid", "pay_on_arrival"] },
+        "qrCodePayload": { "type": "string" },
+        "estimatedReadyTime": { "type": "string" },
+        "adminNotes": { "type": "string" },
+        "feedback": {
+          "type": "object",
+          "properties": {
+            "rating": { "type": "number" },
+            "comment": { "type": "string" },
+            "submittedAt": { "type": "string" }
+          }
+        }
+      }
+    },
+    "tables": {
+      "collection": "tables",
+      "description": "Floor plan cafe tables across indoor, study, lawn, and booth zones",
+      "fields": {
+        "id": { "type": "string" },
+        "tableNumber": { "type": "string" },
+        "name": { "type": "string" },
+        "capacity": { "type": "number" },
+        "zone": { "type": "string" },
+        "status": { "type": "string", "enum": ["available", "reserved", "occupied", "cleaning"] },
+        "currentBookingId": { "type": "string" },
+        "coordinates": {
+          "type": "object",
+          "properties": {
+            "x": { "type": "number" },
+            "y": { "type": "number" }
+          }
+        }
+      }
+    },
+    "menuItems": {
+      "collection": "menuItems",
+      "description": "Food and beverage menu offerings with pricing, tags, and stock counts",
+      "fields": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "tagline": { "type": "string" },
+        "category": { "type": "string" },
+        "subcategory": { "type": "string" },
+        "description": { "type": "string" },
+        "price": { "type": "number" },
+        "originalPrice": { "type": "number" },
+        "image": { "type": "string" },
+        "dietaryTags": { "type": "array", "items": { "type": "string" } },
+        "isAvailable": { "type": "boolean" },
+        "stockCount": { "type": "number" },
+        "rating": { "type": "number" },
+        "reviewCount": { "type": "number" },
+        "preparationTimeMinutes": { "type": "number" },
+        "ingredients": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "settings": {
+      "collection": "settings",
+      "description": "General cafe configuration, contact details, coordinates, and operating schedule",
+      "fields": {
+        "name": { "type": "string" },
+        "tagline": { "type": "string" },
+        "address": { "type": "string" },
+        "city": { "type": "string" },
+        "phone": { "type": "string" },
+        "whatsapp": { "type": "string" },
+        "email": { "type": "string" },
+        "currency": { "type": "string" }
+      }
+    },
+    "promoCodes": {
+      "collection": "promoCodes",
+      "description": "Discount vouchers and promotional coupon codes",
+      "fields": {
+        "code": { "type": "string" },
+        "discountType": { "type": "string" },
+        "discountValue": { "type": "number" },
+        "minOrderAmount": { "type": "number" },
+        "isActive": { "type": "boolean" }
+      }
+    },
+    "users": {
+      "collection": "users",
+      "description": "Authenticated users and customer profiles",
+      "fields": {
+        "uid": { "type": "string", "description": "Firebase Auth UID" },
+        "email": { "type": "string", "description": "User email" },
+        "displayName": { "type": "string", "description": "User display name" },
+        "role": { "type": "string", "enum": ["owner", "admin", "staff", "customer"], "description": "Role access tier" },
+        "permissions": { "type": "array", "items": { "type": "string" }, "description": "Granular capability flags" },
+        "assignedBy": { "type": "string", "description": "Source of role grant" },
+        "createdAt": { "type": "string", "description": "ISO timestamp" },
+        "lastLoginAt": { "type": "string", "description": "ISO timestamp" }
+      }
+    },
+    "admins": {
+      "collection": "admins",
+      "description": "Secure authorized cafe owner and administrator accounts with verified elevated credentials",
+      "fields": {
+        "uid": { "type": "string", "description": "Admin UID" },
+        "email": { "type": "string", "description": "Admin email address" },
+        "displayName": { "type": "string", "description": "Admin full name / designation" },
+        "role": { "type": "string", "enum": ["owner", "admin"], "description": "Elevated administrator role" },
+        "permissions": { "type": "array", "items": { "type": "string" }, "description": "Administrative permission grants" },
+        "isActive": { "type": "boolean", "description": "Whether the admin account is active" },
+        "assignedBy": { "type": "string", "description": "Admin who authorized this account" },
+        "createdAt": { "type": "string", "description": "ISO timestamp of account authorization" },
+        "lastLoginAt": { "type": "string", "description": "ISO timestamp of last admin session" }
+      }
+    },
+    "counterSales": {
+      "collection": "counterSales",
+      "description": "Manual walk-in sales recorded directly at the cafe counter without online ordering",
+      "fields": {
+        "id": { "type": "string", "description": "Unique counter sale identifier e.g. CS-94821" },
+        "customerName": { "type": "string", "description": "Optional walk-in customer name" },
+        "customerPhone": { "type": "string", "description": "Optional walk-in customer mobile number" },
+        "items": { "type": "array", "items": { "type": "object" }, "description": "Itemized list of products purchased" },
+        "totalAmount": { "type": "number", "description": "Total counter sale amount in currency" },
+        "paymentMethod": { "type": "string", "enum": ["cash", "upi", "other"], "description": "Payment tender used" },
+        "createdAt": { "type": "string", "description": "ISO timestamp of counter sale" },
+        "note": { "type": "string", "description": "Optional staff note or remark" },
+        "addedByUid": { "type": "string", "description": "Admin UID who recorded the counter sale" },
+        "addedByName": { "type": "string", "description": "Admin display name who recorded the counter sale" },
+        "updatedAt": { "type": "string", "description": "ISO timestamp of update" }
+      }
+    },
+    "staff": {
+      "collection": "staff",
+      "description": "Campus staff profiles, employment status, roles, and assigned permissions",
+      "fields": {
+        "id": { "type": "string", "description": "Unique staff document identifier" },
+        "uid": { "type": "string", "description": "Firebase Auth UID if linked" },
+        "staffId": { "type": "string", "description": "Campus staff employee identifier (e.g. CC-STF-101)" },
+        "fullName": { "type": "string", "description": "Staff member full name" },
+        "mobile": { "type": "string", "description": "Contact phone number" },
+        "email": { "type": "string", "description": "Staff email and login address" },
+        "dateOfJoining": { "type": "string", "description": "Employment start date" },
+        "role": { "type": "string", "enum": ["owner", "manager", "staff"], "description": "RBAC access role" },
+        "position": { "type": "string", "description": "Job designation or position" },
+        "status": { "type": "string", "enum": ["active", "inactive", "suspended"], "description": "Staff account status" },
+        "address": { "type": "string", "description": "Staff residential address" },
+        "emergencyContact": { "type": "string", "description": "Emergency contact number" },
+        "idProofType": { "type": "string", "enum": ["College ID", "Aadhaar", "PAN", "Driving Licence", "Other"], "description": "Type of ID proof" },
+        "idProofNumber": { "type": "string", "description": "ID proof document number" },
+        "idProofDocumentUrl": { "type": "string", "description": "Uploaded ID proof file preview or URL" },
+        "photoUrl": { "type": "string", "description": "Staff profile photograph URL" },
+        "notes": { "type": "string", "description": "Internal notes or remarks" },
+        "permissions": { "type": "array", "items": { "type": "string" }, "description": "Granular capability flags" },
+        "createdAt": { "type": "string", "description": "ISO timestamp of profile creation" },
+        "updatedAt": { "type": "string", "description": "ISO timestamp of last update" },
+        "lastLoginAt": { "type": "string", "description": "ISO timestamp of last session" }
+      }
+    },
+    "staffAttendance": {
+      "collection": "staffAttendance",
+      "description": "Daily attendance markings, check-in/out timestamps, hours worked, and correction history for campus staff",
+      "fields": {
+        "id": { "type": "string", "description": "Attendance record identifier (e.g. CC-STF-101_2026-09-15)" },
+        "staffId": { "type": "string", "description": "Staff employee identifier" },
+        "staffDocId": { "type": "string", "description": "Internal staff profile document ID" },
+        "staffName": { "type": "string", "description": "Staff member full name" },
+        "date": { "type": "string", "description": "Attendance date (YYYY-MM-DD)" },
+        "status": { "type": "string", "enum": ["present", "absent", "weekly_off", "leave", "holiday"], "description": "Daily attendance status" },
+        "checkInTime": { "type": "string", "description": "Check-in time (e.g. 09:30)" },
+        "checkOutTime": { "type": "string", "description": "Check-out time (e.g. 18:00)" },
+        "totalWorkingMinutes": { "type": "number", "description": "Total elapsed working minutes" },
+        "totalWorkingHoursFormatted": { "type": "string", "description": "Formatted working hours (e.g. 8h 30m)" },
+        "notes": { "type": "string", "description": "Optional notes or remarks" },
+        "correctionReason": { "type": "string", "description": "Reason given for attendance record modification" },
+        "markedByUid": { "type": "string", "description": "UID of admin/manager who marked or updated attendance" },
+        "markedByName": { "type": "string", "description": "Display name of administrator who marked attendance" },
+        "createdAt": { "type": "string", "description": "ISO creation timestamp" },
+        "updatedAt": { "type": "string", "description": "ISO update timestamp" }
+      }
+    },
+    "staffAuditLogs": {
+      "collection": "staffAuditLogs",
+      "description": "Append-only activity and audit trail of operational actions performed by campus staff and administrators",
+      "fields": {
+        "id": { "type": "string", "description": "Audit log entry identifier" },
+        "staffName": { "type": "string", "description": "Staff member display name" },
+        "staffId": { "type": "string", "description": "Staff member employee identifier" },
+        "staffUid": { "type": "string", "description": "Staff Firebase Auth UID" },
+        "action": { "type": "string", "description": "Human-readable description of action performed" },
+        "category": { "type": "string", "enum": ["order", "counter_sale", "table", "menu", "cafe_status", "staff", "settings"], "description": "Audit log category" },
+        "date": { "type": "string", "description": "Date of action (YYYY-MM-DD)" },
+        "time": { "type": "string", "description": "Time of action (HH:mm:ss)" },
+        "timestamp": { "type": "string", "description": "ISO timestamp" },
+        "relevantId": { "type": "string", "description": "Referenced resource identifier" },
+        "details": { "type": "string", "description": "Additional context or payload details" }
+      }
+    }
+  }
+}

@@ -1,0 +1,6 @@
+{
+  "name": "Campora Cafe — GEC Banka Campus",
+  "description": "Smart cafe booking, table reservations, authentic food ordering, UPI instant payments, and live kitchen tracker for Government Engineering College Banka.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
